@@ -12,6 +12,7 @@ import {
   parseProductName,
   generateSlug,
   cleanPrice,
+  isBasketballShoe,
 } from "./normalize";
 
 const STORE = "manelsanchez";
@@ -224,6 +225,9 @@ async function upsertProduct(
   const originalPrice = raw.originalPrice ? cleanPrice(raw.originalPrice) : null;
 
   if (!price) return;
+
+  // Filtra não-sapatilhas
+  if (!isBasketballShoe(raw.name)) return;
 
   const { data: product, error: productError } = await supabase
     .from("products")

@@ -1,48 +1,27 @@
-interface PriceDisplayProps {
-  maxPrice: number;
-  minPrice: number;
-  savingsPct: number;
-  lastUpdated?: string;
-}
+interface PriceDisplayProps { maxPrice: number; minPrice: number; savingsPct: number; lastUpdated?: string; }
 
-export default function PriceDisplay({
-  maxPrice,
-  minPrice,
-  savingsPct,
-}: PriceDisplayProps) {
+export default function PriceDisplay({ maxPrice, minPrice, savingsPct, lastUpdated }: PriceDisplayProps) {
   const hasDiscount = savingsPct > 0;
-  const format = (v: number) =>
-    new Intl.NumberFormat("pt-PT", {
-      style: "currency",
-      currency: "EUR",
-    }).format(v);
+  const fmt = (v: number) => new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(v);
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline gap-3">
-        <span className="text-3xl font-bold text-gray-900 dark:text-white">
-          {format(minPrice)}
-        </span>
+    <div className="bg-[#F9FAFB] rounded-[14px] p-4">
+      <div className="flex items-baseline gap-2.5 flex-wrap mb-1">
         {hasDiscount && (
-          <>
-            <span className="text-lg text-gray-400 dark:text-gray-600 line-through">
-              {format(maxPrice)}
-            </span>
-            <span className="rounded-full bg-orange-100 dark:bg-orange-900 px-3 py-1 text-sm font-bold text-orange-600 dark:text-orange-400">
-              -{Math.round(savingsPct)}%
-            </span>
-          </>
+          <span className="text-[18px] text-[#D1D5DB] line-through">{fmt(maxPrice)}</span>
+        )}
+        <span className="text-[34px] font-black text-[#111827] tracking-[-1.5px]">{fmt(minPrice)}</span>
+        {hasDiscount && (
+          <span className="bg-[#F97316] text-white text-xs font-extrabold px-2.5 py-1.5 rounded-lg self-center">
+            Poupa {Math.round(savingsPct)}%
+          </span>
         )}
       </div>
-      {hasDiscount && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Poupa{" "}
-          <span className="font-semibold text-orange-500">
-            {format(maxPrice - minPrice)}
-          </span>{" "}
-          em relação ao preço mais alto encontrado
-        </p>
-      )}
+      <div className="text-[11px] text-[#6B7280]">
+        {lastUpdated
+          ? `Atualizado às ${new Date(lastUpdated).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })} · Shifty encontrou o melhor preço`
+          : "Shifty encontrou o melhor preço"}
+      </div>
     </div>
   );
 }

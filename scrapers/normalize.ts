@@ -95,14 +95,26 @@ export function generateSlug(
   model: string,
   colorway: string | null
 ): string {
-  const parts = [brand, model];
+  // Limpa prefixos comuns de lojas ("Sapatilhas", "Ténis", "Calçado", etc.)
+  let cleanModel = model
+    .replace(/^sapatilhas?\s+(de\s+)?/i, "")
+    .replace(/^tenis\s+(de\s+)?/i, "")
+    .replace(/^ténis\s+(de\s+)?/i, "")
+    .replace(/^calcado\s+(de\s+)?/i, "")
+    .replace(/^calçado\s+(de\s+)?/i, "")
+    .replace(/^sneakers?\s+/i, "")
+    .replace(/^chaussures?\s+(de\s+)?/i, "")
+    .replace(/^zapatillas?\s+(de\s+)?/i, "")
+    .trim();
+
+  const parts = [brand, cleanModel];
   if (colorway) parts.push(colorway);
   return parts
     .join("-")
     .toLowerCase()
-    .replace(/[^a-z0-9À-ÿ]+/g, "-") // substitui não-alfanuméricos por -
-    .replace(/^-+|-+$/g, "")         // remove trailing/leading -
-    .replace(/-{2,}/g, "-");         // colapsa múltiplos -
+    .replace(/[^a-z0-9À-ÿ]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
 }
 
 /**
@@ -150,6 +162,64 @@ export function normalizeText(text: string): string {
 /**
  * Gera tags automáticas a partir do nome/descrição
  */
+/**
+ * Filtra produtos que não são sapatilhas de basquetebol.
+ * Exclui: meias, t-shirts, camisolas, calções, mochilas, bonés, bolas, etc.
+ */
+export function isBasketballShoe(name: string): boolean {
+  const n = normalizeText(name);
+
+  // Exclui explicitamente não-sapatilhas
+  const excludePatterns = [
+    "meias", "socks", "pack meias", "pair socks",
+    "camisola", "camisete", "t-shirt", "tee", "jersey", "camisa",
+    "calcoes", "calções", "shorts", "calças",
+    "mochila", "backpack", "sacola", "bolsa", "duffel", "bag",
+    "bone", "boné", "cap", "snapback", "gorro", "hat",
+    "bola", "ball", "basketbol", "cesto", "mini-basket",
+    "punhos", "cotoveleira", "joelheira", "sleeve", "arm sleeve",
+    "fita", "headband", "bandana", "faixa",
+    "casaco", "hoodie", "jacket", "chaqueta", "sweatshirt", "puffer",
+    "calca", "joggers", "track suit", "pants", "tights", "leggings",
+    "top", "tank", "dress", "vestido", "saia",
+    "polo", "body",
+    "bomba", "pump",
+    "manga", "compress", "guard",
+    "chinelo", "slide", "adilette", "shower",
+  ];
+
+  for (const pattern of excludePatterns) {
+    if (n.includes(pattern)) return false;
+  }
+
+  // Inclui apenas se tiver indicadores de sapatilha
+  const shoeIndicators = [
+    "sapatilhas", "sapatilha", "tenis", "ténis", "calcado", "calçado",
+    "sneaker", "shoe", "chaussure", "zapatilla",
+    // Marcas + modelos específicos (sem "Sapatilhas" explícito no nome)
+    // Se tiver nome de marca de basquete + número de modelo, é sapatilha
+    "nike", "jordan", "adidas", "puma", "under armour", "new balance",
+    "anta", "li-ning", "lining", "converse", "reebok",
+  ];
+
+  for (const indicator of shoeIndicators) {
+    if (n.includes(indicator)) return true;
+  }
+
+  // Se tem formato de modelo (número de versão ou nome de jogador)
+  const modelPatterns = [
+    /\b\d{1,2}\b/,           // número de versão: "LeBron 22", "KD 18"
+    /curry|lebron|durant|giannis|harden|luka|tatum|ja\s*morant|kobe|booker|sabrina|zion|lamelo/i,
+    /\b(pro|elite|low|mid|high|protro|zoom|air|nitro|boost)\b/i,
+  ];
+
+  for (const pattern of modelPatterns) {
+    if (pattern.test(name)) return true;
+  }
+
+  return false;
+}
+
 export function generateTags(name: string, description?: string): string[] {
   const text = `${name} ${description || ""}`.toLowerCase();
   const tags: string[] = [];

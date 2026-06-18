@@ -1,75 +1,43 @@
 @import "tailwindcss";
 
 /* =============================================
-   Shifty Design System
+   Shifty Design System v2
+   Inter · #F97316 · Never decorative, only action
    ============================================= */
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 @theme inline {
-  --color-background: #ffffff;
+  --color-background: #F9FAFB;
   --color-foreground: #111827;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Light mode (default) */
 :root {
-  --shifty-orange: #f97316;
-  --shifty-orange-dark: #ea580c;
-  --shifty-green: #16a34a;
-  --shifty-red: #dc2626;
-
-  --color-surface: #ffffff;
-  --color-surface-alt: #f9fafb;
-  --color-border: #f3f4f6;
-  --color-text: #111827;
-  --color-text-muted: #6b7280;
-  --color-text-subtle: #9ca3af;
-}
-
-/* Dark mode */
-.dark {
-  --color-surface: #111827;
-  --color-surface-alt: #1f2937;
-  --color-border: #374151;
-  --color-text: #f9fafb;
-  --color-text-muted: #9ca3af;
-  --color-text-subtle: #6b7280;
+  --or: #F97316;
+  --or-dk: #EA580C;
+  --or-lt: #FFF7ED;
+  --or-mid: #FED7AA;
+  --g9: #111827;
+  --g7: #374151;
+  --g5: #6B7280;
+  --g3: #D1D5DB;
+  --g2: #E5E7EB;
+  --g1: #F3F4F6;
+  --g0: #F9FAFB;
+  --wh: #FFFFFF;
+  --gr: #16A34A;
+  --re: #DC2626;
 }
 
 body {
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: var(--g0);
+  color: var(--g9);
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-}
-
-/* Shifty utilities */
-.shifty-gradient {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-}
-
-.shifty-card {
-  @apply rounded-xl border transition-shadow duration-200;
-  border-color: var(--color-border);
-  background: var(--color-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-.shifty-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  line-height: 1.6;
 }
 
 /* Animations */
 @keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-
-.animate-slide-up {
-  animation: slide-up 0.2s ease-out;
-}
+.animate-slide-up { animation: slide-up 0.2s ease-out; }

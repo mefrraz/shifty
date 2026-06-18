@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -9,81 +8,35 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Shifty — Sapatilhas de Basquetebol ao Melhor Preço",
-    template: "%s | Shifty",
-  },
-  description:
-    "Compara preços de sapatilhas de basquetebol nas melhores lojas ibéricas. Encontra o melhor preço em segundos.",
-  openGraph: {
-    title: "Shifty — Sapatilhas de Basquetebol ao Melhor Preço",
-    description:
-      "Compara preços de sapatilhas de basquetebol nas melhores lojas ibéricas.",
-    siteName: "Shifty",
-    locale: "pt_PT",
-    type: "website",
-  },
+  title: { default: "Shifty — Sapatilhas de Basquetebol ao Melhor Preço", template: "%s | Shifty" },
+  description: "Compara preços de sapatilhas de basquetebol nas melhores lojas ibéricas.",
+  openGraph: { title: "Shifty — Sapatilhas de Basquetebol ao Melhor Preço", description: "Compara preços de sapatilhas de basquetebol nas melhores lojas ibéricas.", siteName: "Shifty", locale: "pt_PT", type: "website" },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt" className={`${inter.className} h-full antialiased`} suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('theme');
-                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
-                  }
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
-      <body className="min-h-full flex flex-col" style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}>
-        {/* Header compacto */}
-        <header className="sticky top-0 z-50 border-b" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
-          <div className="mx-auto flex h-12 items-center justify-between px-4 sm:px-6 lg:px-8">
-            {/* Logo — quadrado laranja */}
-            <a href="/" className="flex items-center gap-3 group" aria-label="Shifty">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500 text-white font-black text-sm group-hover:bg-orange-600 transition-colors">
-                S
-              </span>
+    <html lang="pt" className={`${inter.className} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-[#F9FAFB] text-[#111827]">
+        {/* Header — 54px, fundo branco */}
+        <header className="sticky top-0 z-50 bg-white border-b border-[#E5E7EB]">
+          <div className="mx-auto flex h-[54px] max-w-6xl items-center justify-between px-4">
+            <a href="/" className="text-xl font-black text-[#F97316] tracking-[-1px]">
+              shifty
             </a>
-
-            {/* Nav */}
-            <nav className="flex items-center gap-1 text-sm font-medium">
-              <a
-                href="/catalogo"
-                className="px-3 py-1.5 rounded-lg text-gray-600 hover:text-orange-500 hover:bg-orange-50 dark:text-gray-400 dark:hover:text-orange-400 dark:hover:bg-orange-950 transition-colors"
-              >
-                Catálogo
-              </a>
-              <ThemeToggle />
+            <nav className="flex items-center gap-5">
+              <a href="/catalogo" className="text-sm font-bold text-[#F97316]">Catálogo</a>
+              <a href="/conta" className="text-sm font-medium text-[#374151] hover:text-[#F97316] transition-colors">Conta</a>
             </nav>
           </div>
         </header>
 
         <main className="flex-1">{children}</main>
 
-        {/* Footer minimal */}
-        <footer className="border-t py-6" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface-alt)' }}>
-          <div className="mx-auto max-w-7xl px-4 text-center text-xs text-gray-400">
-            <a href="/" className="inline-flex items-center gap-2 mb-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded bg-orange-500 text-white font-black text-[10px]">
-                S
-              </span>
-              <span className="font-bold text-gray-500">shifty.pt</span>
-            </a>
-            <p>&copy; {new Date().getFullYear()} Shifty</p>
+        {/* Footer */}
+        <footer className="border-t border-[#E5E7EB] bg-white py-6 mt-12">
+          <div className="mx-auto max-w-6xl px-4 text-center text-xs text-[#9CA3AF]">
+            <a href="/" className="font-black text-[#F97316] text-sm tracking-[-0.5px]">shifty.pt</a>
+            <p className="mt-1">&copy; {new Date().getFullYear()} Shifty</p>
           </div>
         </footer>
       </body>

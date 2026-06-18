@@ -39,7 +39,7 @@ async function main() {
     .from("products")
     .select("id, slug, name, brand, player_type")
     .is("description", null)
-    .limit(20);
+    .limit(100);
 
   if (error) {
     console.error(`❌ Erro ao buscar produtos: ${error.message}`);

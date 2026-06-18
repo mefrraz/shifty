@@ -1,173 +1,68 @@
 "use client";
-
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
-interface FilterPanelProps {
-  brands: string[];
-}
-
-export default function FilterPanel({ brands }: FilterPanelProps) {
+export default function FilterPanel({ brands }: { brands: string[] }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const sp = useSearchParams();
+  const curBrand = sp.get("marca") || "";
+  const curSort = sp.get("ordem") || "newest";
+  const curSale = sp.get("promocao") === "1";
+  const curQuery = sp.get("q") || "";
 
-  const currentBrand = searchParams.get("marca") || "";
-  const currentSort = searchParams.get("ordem") || "newest";
-  const currentSale = searchParams.get("promocao") === "1";
-  const currentPlayerType = searchParams.get("posicao") || "";
-  const currentQuery = searchParams.get("q") || "";
+  const update = useCallback((upd: Record<string, string | null>) => {
+    const p = new URLSearchParams(sp.toString());
+    for (const [k, v] of Object.entries(upd)) { if (v === null || v === "") p.delete(k); else p.set(k, v); }
+    router.push(`/catalogo?${p}`);
+  }, [router, sp]);
 
-  const updateParams = useCallback(
-    (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null || value === "") {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      }
-
-      router.push(`/catalogo?${params.toString()}`);
-    },
-    [router, searchParams]
-  );
-
-  const sortOptions = [
-    { value: "newest", label: "Novidades" },
-    { value: "discount", label: "Maior desconto" },
-    { value: "price_asc", label: "Preço ↑" },
-    { value: "price_desc", label: "Preço ↓" },
-  ];
-
-  const playerTypes = [
-    { value: "", label: "Todas" },
-    { value: "guard", label: "Base / Guard" },
-    { value: "forward", label: "Extremo / Forward" },
-    { value: "center", label: "Poste / Center" },
-  ];
+  const sorts = [{ v: "newest", l: "Novidades" }, { v: "discount", l: "Maior desconto" }, { v: "price_asc", l: "Preço ↑" }, { v: "price_desc", l: "Preço ↓" }];
 
   return (
-    <aside className="w-full lg:w-64 shrink-0">
-      <div className="sticky top-20 space-y-6">
-        {/* Pesquisa */}
-        {currentQuery && (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-500">Pesquisa:</span>
-            <span className="font-medium text-gray-900">"{currentQuery}"</span>
-            <button
-              onClick={() => updateParams({ q: null })}
-              className="text-orange-500 hover:text-orange-600 text-xs"
-            >
-              limpar
-            </button>
+    <aside className="w-full lg:w-56 shrink-0">
+      <div className="flex flex-col gap-5 lg:sticky lg:top-[70px]">
+        {curQuery && (
+          <div className="text-sm">
+            <span className="text-[#6B7280]">Pesquisa: </span>
+            <span className="font-semibold">"{curQuery}"</span>
+            <button onClick={() => update({ q: null })} className="ml-2 text-[#F97316] text-xs font-bold">limpar</button>
           </div>
         )}
 
-        {/* Ordenação */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            Ordenar
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {sortOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => updateParams({ ordem: opt.value })}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  currentSort === opt.value
-                    ? "bg-orange-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {opt.label}
+          <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-[0.08em] mb-2">Ordenar</div>
+          <div className="flex flex-wrap gap-1.5">
+            {sorts.map(s => (
+              <button key={s.v} onClick={() => update({ ordem: s.v })}
+                className={`px-3 py-1.5 rounded-[20px] text-[13px] font-medium border transition-colors ${curSort === s.v ? "bg-[#F97316] border-[#F97316] text-white font-bold" : "border-[#E5E7EB] text-[#374151] bg-white hover:bg-[#F3F4F6]"}`}>
+                {s.l}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Marca */}
         {brands.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-              Marca
-            </h3>
-            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-              <button
-                onClick={() => updateParams({ marca: null })}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  !currentBrand
-                    ? "bg-orange-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                Todas
-              </button>
-              {brands.map((brand) => (
-                <button
-                  key={brand}
-                  onClick={() => updateParams({ marca: brand })}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                    currentBrand === brand
-                      ? "bg-orange-500 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  {brand}
-                </button>
+            <div className="text-[11px] font-bold text-[#6B7280] uppercase tracking-[0.08em] mb-2">Marca</div>
+            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
+              <button onClick={() => update({ marca: null })}
+                className={`px-3 py-1.5 rounded-[20px] text-[13px] font-medium border transition-colors ${!curBrand ? "bg-[#F97316] border-[#F97316] text-white font-bold" : "border-[#E5E7EB] text-[#374151] bg-white hover:bg-[#F3F4F6]"}`}>Todas</button>
+              {brands.map(b => (
+                <button key={b} onClick={() => update({ marca: b })}
+                  className={`px-3 py-1.5 rounded-[20px] text-[13px] font-medium border transition-colors ${curBrand === b ? "bg-[#F97316] border-[#F97316] text-white font-bold" : "border-[#E5E7EB] text-[#374151] bg-white hover:bg-[#F3F4F6]"}`}>{b}</button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Posição de jogo */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-            Posição de jogo
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {playerTypes.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => updateParams({ posicao: opt.value || null })}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  currentPlayerType === opt.value
-                    ? "bg-orange-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={curSale} onChange={e => update({ promocao: e.target.checked ? "1" : null })}
+            className="h-4 w-4 rounded border-[#D1D5DB] text-[#F97316] focus:ring-[#F97316]" />
+          <span className="text-[13px] font-medium text-[#374151]">Em promoção</span>
+        </label>
 
-        {/* Em promoção */}
-        <div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={currentSale}
-              onChange={(e) =>
-                updateParams({ promocao: e.target.checked ? "1" : null })
-              }
-              className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-            />
-            <span className="text-sm font-medium text-gray-700">
-              Em promoção
-            </span>
-          </label>
-        </div>
-
-        {/* Limpar filtros */}
-        {(currentBrand || currentSale || currentPlayerType) && (
-          <button
-            onClick={() => router.push("/catalogo")}
-            className="text-sm text-orange-500 hover:text-orange-600 font-medium"
-          >
-            Limpar todos os filtros
-          </button>
+        {(curBrand || curSale) && (
+          <button onClick={() => router.push("/catalogo")} className="text-sm font-semibold text-[#F97316]">Limpar filtros</button>
         )}
       </div>
     </aside>
