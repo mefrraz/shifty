@@ -1,146 +1,75 @@
 // scraper-manelsanchez.ts
-// Manel Sanchez — Custom PHP com ?format=json + schema.org
-// URL: https://www.manelsanchez.pt/
+// Manel Sanchez — PHP Custom (HTML scraping, sem API JSON)
+// URL listagem: https://www.manelsanchez.pt/tenis-basquete/
+// Preços: normal + MVP (programa fidelidade)
 
 import { createServerClient } from "../lib/supabaseServer";
 import * as cheerio from "cheerio";
+import type { AnyNode } from "domhandler";
+import { getProductUrlsFromSitemap } from "./sitemap";
 import {
   normalizeBrand,
   parseProductName,
   generateSlug,
   cleanPrice,
-  extractSizes,
 } from "./normalize";
 
 const STORE = "manelsanchez";
 const BASE_URL = "https://www.manelsanchez.pt";
-
-// Categorias de sapatilhas de basquetebol
-const CATEGORY_URLS = [
-  `${BASE_URL}/categoria/sapatilhas/basquetebol/`,
-  `${BASE_URL}/categoria/calcado/basquetebol/`,
-  `${BASE_URL}/loja/categoria/sapatilhas-basquetebol/`,
-  `${BASE_URL}/product-category/basquetebol/`,
-];
+const CATEGORY_URL = `${BASE_URL}/tenis-basquete/`;
 
 interface RawProduct {
   name: string;
   price: string;
-  original_price?: string;
+  originalPrice?: string;
   link: string;
   image?: string;
-  brand?: string;
-  sizes?: { size_eu: string }[];
 }
 
 async function scrape() {
   const supabase = createServerClient();
   console.log(`👟 Manel Sanchez — iniciando scrape...`);
+  let totalProcessed = 0;
+  const allProducts: RawProduct[] = [];
 
-  let allProducts: RawProduct[] = [];
+  // Estratégia 1: sitemap
+  console.log(`  📁 A tentar sitemap...`);
+  const sitemap = await getProductUrlsFromSitemap(
+    BASE_URL,
+    /\.html$/ // URLs de produto terminam em .html
+  );
 
-  for (const categoryUrl of CATEGORY_URLS) {
-    console.log(`  📂 Tentando: ${categoryUrl}`);
-
-    try {
-      // Tenta formato JSON primeiro
-      let products: RawProduct[] = [];
-
-      const jsonUrl = categoryUrl.includes("?")
-        ? `${categoryUrl}&format=json`
-        : `${categoryUrl}?format=json`;
-
-      const jsonResponse = await fetch(jsonUrl, {
-        headers: {
-          "User-Agent": "Shifty/1.0 (basketball-shoe-aggregator)",
-          Accept: "application/json",
-        },
-      });
-
-      if (jsonResponse.ok) {
-        const contentType = jsonResponse.headers.get("content-type") || "";
-        if (contentType.includes("json")) {
-          const data = await jsonResponse.json();
-          products = parseManelSanchezJSON(data);
-          console.log(`    ✅ JSON: ${products.length} produtos`);
-        }
-      }
-
-      // Fallback: HTML com schema.org
-      if (products.length === 0) {
-        products = await scrapeHTML(categoryUrl);
-        console.log(`    📄 HTML: ${products.length} produtos`);
-      }
-
-      if (products.length > 0) {
-        allProducts = products;
-        break; // Encontrou a categoria correta
-      }
-    } catch (err: any) {
-      console.log(`    ⚠️ ${err.message}`);
+  if (sitemap.urls.length > 0) {
+    console.log(`  ✅ Sitemap: ${sitemap.urls.length} URLs`);
+    for (const url of sitemap.urls.slice(0, 200)) {
+      try {
+        const product = await scrapeProductPage(url);
+        if (product) allProducts.push(product);
+      } catch { /* ignora */ }
     }
-  }
-
-  if (allProducts.length === 0) {
-    console.log("  ⚠️ Nenhum produto encontrado. A verificar estrutura do site...");
-    // Última tentativa: scrape da homepage e procura links de categorias
-    allProducts = await discoverAndScrape();
+  } else {
+    // Estratégia 2: HTML scraping da listagem
+    console.log(`  📄 A fazer scraping da listagem: ${CATEGORY_URL}`);
+    const listProducts = await scrapeListingPage(CATEGORY_URL);
+    allProducts.push(...listProducts);
   }
 
   console.log(`  🔍 ${allProducts.length} produtos encontrados`);
 
-  let processed = 0;
   for (const raw of allProducts) {
     try {
       await upsertProduct(supabase, raw);
-      processed++;
+      totalProcessed++;
     } catch (err: any) {
       console.error(`  ❌ "${raw.name}": ${err.message}`);
     }
   }
 
-  console.log(`🏁 Manel Sanchez: ${processed} produtos`);
-  return { inserted: processed };
+  console.log(`🏁 Manel Sanchez: ${totalProcessed} produtos`);
+  return { inserted: totalProcessed };
 }
 
-function parseManelSanchezJSON(data: any): RawProduct[] {
-  const products: RawProduct[] = [];
-
-  // Tenta vários formatos comuns de JSON de loja
-  const items = data.products || data.items || data.data || data.posts || data;
-
-  if (!Array.isArray(items)) {
-    // Pode ser objeto com chaves
-    const arr = Object.values(items).filter(
-      (v) => typeof v === "object" && v !== null && "name" in (v as any)
-    );
-    if (arr.length > 0) {
-      return parseManelSanchezJSON(arr);
-    }
-    return products;
-  }
-
-  for (const item of items) {
-    if (!item || typeof item !== "object") continue;
-    const name = item.name || item.title || item.product_name;
-    if (!name) continue;
-
-    products.push({
-      name: String(name).trim(),
-      price: String(item.price || item.current_price || item.sale_price || 0),
-      original_price: item.original_price || item.regular_price || undefined,
-      link: item.link || item.url || item.permalink || "",
-      image:
-        item.image || item.thumbnail || item.featured_image || item.image_url || undefined,
-      brand: item.brand || item.manufacturer || undefined,
-      sizes: item.sizes || item.variations || undefined,
-    });
-  }
-
-  return products;
-}
-
-async function scrapeHTML(url: string): Promise<RawProduct[]> {
+async function scrapeListingPage(url: string): Promise<RawProduct[]> {
   const products: RawProduct[] = [];
 
   try {
@@ -151,92 +80,78 @@ async function scrapeHTML(url: string): Promise<RawProduct[]> {
       },
     });
 
-    if (!response.ok) return products;
+    if (!response.ok) {
+      console.log(`    ⚠️ HTTP ${response.status}`);
+      return products;
+    }
 
     const html = await response.text();
     const $ = cheerio.load(html);
 
-    // Schema.org JSON-LD
-    $('script[type="application/ld+json"]').each((_, el) => {
-      try {
-        const data = JSON.parse($(el).html() || "{}");
-        const processItem = (item: any) => {
-          if (item["@type"] === "Product" && item.name) {
-            products.push({
-              name: item.name,
-              price: item.offers?.price || "0",
-              link: item.url || item.offers?.url || "",
-              image: item.image || undefined,
-              brand: item.brand?.name || undefined,
-            });
-          }
-        };
+    // Estrutura Manel Sanchez: produtos em <li> com <h2><a> para nome
+    // Preços: "120,00€" (normal) e "MVP: 102,00€" (desconto)
+    $("li.producto, .productos-lista li, .product-item").each((_, el: AnyNode) => {
+      const $el = $(el);
 
-        if (data["@graph"]) {
-          data["@graph"].forEach(processItem);
-        } else if (data["@type"] === "ItemList" && data.itemListElement) {
-          data.itemListElement.forEach((entry: any) => {
-            processItem(entry.item || entry);
-          });
-        } else {
-          processItem(data);
+      // Nome
+      const name = $el.find("h2 a, h3 a, .product-name a").first().text().trim();
+      if (!name) return;
+
+      // Link
+      const linkEl = $el.find("h2 a, h3 a").first();
+      const link = linkEl.attr("href") || "";
+
+      // Preço: procura o texto antes de "MVP:"
+      const fullText = $el.text();
+      const mvpMatch = fullText.match(/MVP:\s*([\d.,]+)€?/);
+      const normalPriceMatch = fullText.match(/([\d.,]+)€/);
+
+      let price = "0";
+      let originalPrice: string | undefined;
+
+      if (mvpMatch) {
+        // MVP é o preço com desconto (mais baixo)
+        price = mvpMatch[1];
+        // Preço normal é o primeiro valor antes de MVP
+        if (normalPriceMatch) {
+          originalPrice = normalPriceMatch[1];
         }
-      } catch {
-        // ignora
+      } else if (normalPriceMatch) {
+        price = normalPriceMatch[1];
       }
+
+      // Imagem
+      const image = $el.find("img[src]").first().attr("src") || undefined;
+
+      products.push({
+        name,
+        price,
+        originalPrice,
+        link: link.startsWith("http") ? link : `${BASE_URL}${link}`,
+        image,
+      });
     });
 
-    // Fallback: scraping visual de produtos
+    // Fallback: schema.org JSON-LD se existir
     if (products.length === 0) {
-      const selectors = [
-        ".product",
-        ".produto",
-        ".product-item",
-        ".product-card",
-        "li.product",
-        "[itemtype='http://schema.org/Product']",
-        ".woocommerce-product",
-        ".type-product",
-      ];
-
-      for (const selector of selectors) {
-        const els = $(selector);
-        if (els.length > 0) {
-          els.each((_, el) => {
-            const $el = $(el);
-            const name =
-              $el.find("h2, h3, .product-title, .product-name, .woocommerce-loop-product__title")
-                .first()
-                .text()
-                .trim();
-
-            if (!name) return;
-
-            const priceText =
-              $el
-                .find(".price, .amount, .woocommerce-Price-amount")
-                .first()
-                .text()
-                .trim() || "0";
-
-            const link =
-              $el.find("a[href]").first().attr("href") || "";
-
-            const image =
-              $el.find("img[src]").first().attr("src") ||
-              $el.find("img[data-src]").first().attr("data-src") ||
-              undefined;
-
-            products.push({
-              name,
-              price: priceText,
-              link: link.startsWith("http") ? link : `${BASE_URL}${link}`,
-              image,
-            });
-          });
-          break;
-        }
-      }
+      $('script[type="application/ld+json"]').each((_, el) => {
+        try {
+          const data = JSON.parse($(el).html() || "{}");
+          if (data["@type"] === "ItemList" && data.itemListElement) {
+            for (const entry of data.itemListElement) {
+              const p = entry.item || entry;
+              if (p.name && p["@type"] === "Product") {
+                products.push({
+                  name: p.name,
+                  price: p.offers?.price || "0",
+                  link: p.url || "",
+                  image: p.image || undefined,
+                });
+              }
+            }
+          }
+        } catch { /* ignora */ }
+      });
     }
   } catch (err: any) {
     console.error(`    ❌ ${err.message}`);
@@ -245,87 +160,75 @@ async function scrapeHTML(url: string): Promise<RawProduct[]> {
   return products;
 }
 
-async function discoverAndScrape(): Promise<RawProduct[]> {
-  // Tenta descobrir categorias de sapatilhas a partir da homepage
-  console.log("  🔎 A descobrir categorias...");
-  const allProducts: RawProduct[] = [];
-
+async function scrapeProductPage(url: string): Promise<RawProduct | null> {
   try {
-    const response = await fetch(BASE_URL, {
+    const response = await fetch(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Shifty/1.0",
       },
     });
 
+    if (!response.ok) return null;
+
     const html = await response.text();
     const $ = cheerio.load(html);
 
-    // Procura links que contenham "basquetebol", "sapatilha", "calcado"
-    const categoryLinks: string[] = [];
-    $("a[href]").each((_, el) => {
-      const href = $(el).attr("href") || "";
-      const text = $(el).text().toLowerCase();
-      if (
-        (href.includes("basquetebol") ||
-          href.includes("sapatilha") ||
-          href.includes("calcado") ||
-          text.includes("basquetebol") ||
-          text.includes("sapatilha")) &&
-        !categoryLinks.includes(href)
-      ) {
-        categoryLinks.push(href.startsWith("http") ? href : `${BASE_URL}${href}`);
+    // Nome: h1 ou meta og:title
+    const name =
+      $("h1").first().text().trim() ||
+      $('meta[property="og:title"]').attr("content") ||
+      "";
+    if (!name) return null;
+
+    // Preço
+    const fullText = $("body").text();
+    const mvpMatch = fullText.match(/MVP:\s*([\d.,]+)€?/);
+    const normalPriceMatch = fullText.match(/([\d.,]+)€/);
+
+    let price = "0";
+    let originalPrice: string | undefined;
+
+    if (mvpMatch) {
+      price = mvpMatch[1];
+      if (normalPriceMatch && normalPriceMatch[1] !== mvpMatch[1]) {
+        originalPrice = normalPriceMatch[1];
       }
-    });
-
-    console.log(`    🔗 ${categoryLinks.length} links de categoria encontrados`);
-
-    for (const link of categoryLinks.slice(0, 5)) {
-      const products = await scrapeHTML(link);
-      allProducts.push(...products);
+    } else if (normalPriceMatch) {
+      price = normalPriceMatch[1];
     }
-  } catch (err: any) {
-    console.error(`    ❌ ${err.message}`);
-  }
 
-  return allProducts;
+    // Imagem
+    const image =
+      $('meta[property="og:image"]').attr("content") ||
+      $(".product-image img").first().attr("src") ||
+      undefined;
+
+    return { name, price, originalPrice, link: url, image };
+  } catch {
+    return null;
+  }
 }
 
 async function upsertProduct(
   supabase: ReturnType<typeof createServerClient>,
   raw: RawProduct
 ) {
-  const brand = raw.brand
-    ? normalizeBrand(raw.brand)
-    : normalizeBrand(
-        raw.name.includes("Nike") ? "Nike"
-        : raw.name.includes("Jordan") ? "Jordan"
-        : raw.name.includes("Adidas") ? "Adidas"
-        : raw.name.includes("Puma") ? "Puma"
-        : raw.name.includes("Under Armour") ? "Under Armour"
-        : raw.name.includes("New Balance") ? "New Balance"
-        : "Outra"
-      );
+  const brand = normalizeBrand(
+    raw.name.match(/Nike|Jordan|Adidas|Puma|Under Armour|New Balance|Anta|Reebok|Li-Ning/i)?.[0] || "Outra"
+  );
 
   const { model, colorway } = parseProductName(raw.name, brand);
   const slug = generateSlug(brand, model, colorway);
   const price = cleanPrice(raw.price);
-  const originalPrice = raw.original_price ? cleanPrice(raw.original_price) : null;
+  const originalPrice = raw.originalPrice ? cleanPrice(raw.originalPrice) : null;
 
   if (!price) return;
 
-  // Upsert do produto
   const { data: product, error: productError } = await supabase
     .from("products")
     .upsert(
-      {
-        slug,
-        name: raw.name.trim(),
-        brand,
-        model,
-        colorway,
-        image_url: raw.image || null,
-      },
+      { slug, name: raw.name.trim(), brand, model, colorway, image_url: raw.image || null },
       { onConflict: "slug" }
     )
     .select("id")
@@ -333,7 +236,6 @@ async function upsertProduct(
 
   if (productError) throw new Error(`Produto: ${productError.message}`);
 
-  // Upsert do preço
   const { error: priceError } = await supabase.from("prices").upsert(
     {
       product_id: product.id,
@@ -347,43 +249,12 @@ async function upsertProduct(
   );
 
   if (priceError) throw new Error(`Preço: ${priceError.message}`);
-
-  // Upsert de tamanhos
-  if (raw.sizes && raw.sizes.length > 0) {
-    await supabase
-      .from("size_availability")
-      .delete()
-      .eq("product_id", product.id)
-      .eq("store", STORE);
-
-    const sizeRows = raw.sizes.map((s) => ({
-      product_id: product.id,
-      store: STORE,
-      size_eu: s.size_eu,
-      in_stock: true,
-    }));
-
-    const { error: sizeError } = await supabase
-      .from("size_availability")
-      .insert(sizeRows);
-
-    if (sizeError) {
-      console.error(`    ⚠️ Tamanhos: ${sizeError.message}`);
-    }
-  }
 }
 
-// Execução standalone
 if (require.main === module) {
   scrape()
-    .then((result) => {
-      console.log(`✅ ${result.inserted} produtos`);
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error("❌ Erro fatal:", err);
-      process.exit(1);
-    });
+    .then((r) => { console.log(`✅ ${r.inserted} produtos`); process.exit(0); })
+    .catch((err) => { console.error("❌", err); process.exit(1); });
 }
 
 export { scrape };

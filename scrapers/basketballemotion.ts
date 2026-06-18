@@ -1,10 +1,11 @@
 // scraper-basketballemotion.ts
-// Basketball Emotion — Custom PHP, HTML scraping com Cheerio
-// URL: https://www.basketballemotion.com/pt/categoria/sapatilhas/basquetebol/
+// Basketball Emotion — PHP Custom (scroll infinito, sem API JSON)
+// URL listagem: https://www.basketballemotion.com/pt/sapatilhas
+// Estratégia: sitemap + fetch de cada página de produto
 
 import { createServerClient } from "../lib/supabaseServer";
 import * as cheerio from "cheerio";
-import type { AnyNode } from "domhandler";
+import { getProductUrlsFromSitemap } from "./sitemap";
 import {
   normalizeBrand,
   parseProductName,
@@ -15,74 +16,70 @@ import {
 
 const STORE = "basketballemotion";
 const BASE_URL = "https://www.basketballemotion.com";
-const CATEGORY_URL = `${BASE_URL}/pt/categoria/sapatilhas/basquetebol/`;
+// Sub-categorias por marca (do menu)
+const CATEGORY_URLS = [
+  `${BASE_URL}/pt/sapatilhas`,
+  `${BASE_URL}/pt/categoria/sapatilhas/basquetebol/nike`,
+  `${BASE_URL}/pt/categoria/sapatilhas/basquetebol/adidas`,
+  `${BASE_URL}/pt/categoria/sapatilhas/jordan`,
+  `${BASE_URL}/pt/categoria/sapatilhas/basquetebol/puma`,
+];
 
 interface RawProduct {
   name: string;
   price: string;
-  original_price?: string;
+  originalPrice?: string;
   link: string;
   image?: string;
-  brand?: string;
   sizes?: { size_eu: string }[];
 }
 
 async function scrape() {
   const supabase = createServerClient();
   console.log(`🏀 Basketball Emotion — iniciando scrape...`);
-
   let totalProcessed = 0;
-  let page = 1;
-  let hasMore = true;
   const allProducts: RawProduct[] = [];
 
-  // Paginação — Basketball Emotion tem listagem paginada
-  while (hasMore) {
-    const url =
-      page === 1
-        ? CATEGORY_URL
-        : `${CATEGORY_URL}page/${page}/`;
+  // Estratégia 1: sitemap (ideal — lista completa sem scroll infinito)
+  console.log(`  📁 A tentar sitemap...`);
+  const sitemap = await getProductUrlsFromSitemap(
+    BASE_URL,
+    /\/pt\/.+sapatilhas/ // URLs de produto contêm /sapatilhas/
+  );
 
-    console.log(`  📄 Página ${page}...`);
-    const products = await scrapePage(url);
+  if (sitemap.urls.length > 0) {
+    console.log(`  ✅ Sitemap: ${sitemap.urls.length} URLs`);
 
-    if (products.length === 0) {
-      hasMore = false;
-      break;
+    // Processa até 200 produtos do sitemap
+    for (const url of sitemap.urls.slice(0, 200)) {
+      try {
+        const product = await scrapeProductPage(url);
+        if (product) allProducts.push(product);
+      } catch { /* ignora */ }
     }
-
-    // Verifica se já vimos estes produtos (fim da paginação ou produtos repetidos)
-    const newProducts = products.filter(
-      (p) => !allProducts.some((existing) => existing.link === p.link)
-    );
-
-    if (newProducts.length === 0) {
-      hasMore = false;
-      break;
+  } else {
+    // Estratégia 2: scraping direto das categorias por marca
+    console.log(`  📄 Sitemap não encontrado, a fazer scraping por categorias...`);
+    for (const categoryUrl of CATEGORY_URLS) {
+      console.log(`    📂 ${categoryUrl}`);
+      try {
+        const products = await scrapeCategoryPage(categoryUrl);
+        allProducts.push(...products);
+        console.log(`      ${products.length} produtos`);
+      } catch (err: any) {
+        console.log(`      ⚠️ ${err.message}`);
+      }
     }
-
-    allProducts.push(...newProducts);
-    page++;
-
-    // Limite de segurança — 10 páginas
-    if (page > 10) hasMore = false;
   }
 
   console.log(`  🔍 ${allProducts.length} produtos encontrados`);
 
-  // Processa cada produto
   for (const raw of allProducts) {
     try {
-      // Tenta buscar detalhes extra na página de produto
-      const details = await scrapeProductPage(raw.link);
-
-      await upsertProduct(supabase, {
-        ...raw,
-        ...details,
-      });
+      await upsertProduct(supabase, raw);
       totalProcessed++;
     } catch (err: any) {
-      console.error(`  ❌ Erro em "${raw.name}": ${err.message}`);
+      console.error(`  ❌ "${raw.name}": ${err.message}`);
     }
   }
 
@@ -90,7 +87,7 @@ async function scrape() {
   return { inserted: totalProcessed };
 }
 
-async function scrapePage(url: string): Promise<RawProduct[]> {
+async function scrapeCategoryPage(url: string): Promise<RawProduct[]> {
   const products: RawProduct[] = [];
 
   try {
@@ -98,125 +95,77 @@ async function scrapePage(url: string): Promise<RawProduct[]> {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Shifty/1.0",
-        "Accept-Language": "pt-PT,pt;q=0.9",
       },
     });
 
-    if (!response.ok) {
-      console.log(`    ⚠️ HTTP ${response.status}`);
-      return products;
-    }
+    if (!response.ok) return products;
 
     const html = await response.text();
     const $ = cheerio.load(html);
 
-    // Seletores típicos de lojas PHP custom
-    // Ajustar conforme a estrutura real do site
-    const productSelectors = [
-      ".product-item",
-      ".product",
-      ".produto",
-      "li.product",
-      ".products .item",
-      ".product-card",
-      ".card-product",
-      "[itemtype='http://schema.org/Product']",
-    ];
+    // Seletores típicos de PHP custom espanhol
+    $("article.product, .product-card, .product-item, .producto").each((_, el) => {
+      const $el = $(el);
 
-    for (const selector of productSelectors) {
-      const els = $(selector);
-      if (els.length > 0) {
-        els.each((_, el) => {
-          const product = extractProduct($, el);
-          if (product) products.push(product);
-        });
-        if (products.length > 0) break;
-      }
-    }
+      const name =
+        $el.find(".product-name, .product-title, h3 a, h2 a").first().text().trim();
+      if (!name) return;
 
-    // Fallback: procura schema.org JSON-LD
+      const price =
+        $el.find(".price, .precio, .product-price").first().text().trim().replace(/[^\d,.]/g, "") || "0";
+
+      const originalPrice =
+        $el.find(".price-before, .regular-price, del.precio, .old-price")
+          .first()
+          .text()
+          .trim()
+          .replace(/[^\d,.]/g, "") || undefined;
+
+      const link = $el.find("a.product-link, a[href]").first().attr("href") || "";
+
+      const image =
+        $el.find("img[src]").first().attr("src") ||
+        $el.find("img[data-src]").first().attr("data-src") ||
+        undefined;
+
+      products.push({
+        name,
+        price,
+        originalPrice,
+        link: link.startsWith("http") ? link : `${BASE_URL}${link}`,
+        image,
+      });
+    });
+
+    // Fallback: schema.org JSON-LD
     if (products.length === 0) {
       $('script[type="application/ld+json"]').each((_, el) => {
         try {
           const data = JSON.parse($(el).html() || "{}");
-          if (data["@type"] === "Product" || data["@type"] === "ItemList") {
-            const items = data.itemListElement || [data];
-            for (const item of items) {
-              const p = item.item || item;
+          if (data["@type"] === "ItemList" && data.itemListElement) {
+            for (const entry of data.itemListElement) {
+              const p = entry.item || entry;
               if (p.name) {
                 products.push({
                   name: p.name,
                   price: p.offers?.price || "0",
-                  link: p.url || p.offers?.url || "",
+                  link: p.url || "",
                   image: p.image || undefined,
-                  brand: p.brand?.name || undefined,
                 });
               }
             }
           }
-        } catch {
-          // ignora JSON inválido
-        }
+        } catch { /* ignora */ }
       });
     }
   } catch (err: any) {
-    console.error(`    ❌ Erro ao fazer fetch: ${err.message}`);
+    console.error(`    ❌ ${err.message}`);
   }
 
   return products;
 }
 
-function extractProduct(
-  $: cheerio.CheerioAPI,
-  el: AnyNode
-): RawProduct | null {
-  const $el = $(el);
-
-  const name =
-    $el.find(".product-title, .product-name, h2 a, h3 a, .title a, .name a")
-      .first()
-      .text()
-      .trim() ||
-    $el.find("h2, h3, .title, .name").first().text().trim() ||
-    $el.find("[itemprop='name']").text().trim();
-
-  if (!name) return null;
-
-  const priceText =
-    $el.find(".price, .product-price, .amount, [itemprop='price']")
-      .first()
-      .text()
-      .trim() || "0";
-
-  const originalPriceText =
-    $el
-      .find(".regular-price, .old-price, .was-price, .compare-price, del .amount")
-      .first()
-      .text()
-      .trim() || undefined;
-
-  const link =
-    $el.find("a[href]").first().attr("href") || "";
-  const fullLink = link.startsWith("http") ? link : `${BASE_URL}${link}`;
-
-  const image =
-    $el.find("img[src]").first().attr("src") ||
-    $el.find("img[data-src]").first().attr("data-src") ||
-    $el.find("[itemprop='image']").attr("content") ||
-    undefined;
-
-  return {
-    name,
-    price: priceText,
-    original_price: originalPriceText,
-    link: fullLink,
-    image: image?.startsWith("http") ? image : image ? `${BASE_URL}${image}` : undefined,
-  };
-}
-
-async function scrapeProductPage(
-  url: string
-): Promise<{ sizes?: { size_eu: string }[]; description?: string }> {
+async function scrapeProductPage(url: string): Promise<RawProduct | null> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -225,46 +174,52 @@ async function scrapeProductPage(
       },
     });
 
-    if (!response.ok) return {};
+    if (!response.ok) return null;
+
     const html = await response.text();
     const $ = cheerio.load(html);
 
-    // Extrai tamanhos
+    // Nome
+    const name =
+      $("h1").first().text().trim() ||
+      $('meta[property="og:title"]').attr("content") ||
+      "";
+    if (!name) return null;
+
+    // Preço
+    const priceText =
+      $('[itemprop="price"]').attr("content") ||
+      $(".price, .precio-actual").first().text().trim();
+    const price = priceText?.replace(/[^\d,.]/g, "") || "0";
+
+    // Preço original
+    const origText =
+      $('[itemprop="highPrice"]').attr("content") ||
+      $(".price-before, .regular-price, del, .old-price").first().text().trim();
+    const originalPrice = origText?.replace(/[^\d,.]/g, "") || undefined;
+
+    // Imagem
+    const image =
+      $('meta[property="og:image"]').attr("content") ||
+      $(".product-image img").first().attr("src") ||
+      undefined;
+
+    // Tamanhos
     const sizes: { size_eu: string }[] = [];
-    $(".size-option, .variation-select option, .attribute-select option").each(
+    $(".size-option, .talla, .size-selector option, .variations select option").each(
       (_, el) => {
         const text = $(el).text().trim();
         const value = $(el).attr("value") || text;
-        if (value && !value.includes("Escolha") && !value.includes("Selecione")) {
-          const sizeMatch = value.match(/(\d{2}(?:[.,]\d)?)/);
-          if (sizeMatch) {
-            sizes.push({ size_eu: sizeMatch[1].replace(",", ".") });
-          }
+        if (value && /\d{2}/.test(value) && !/escolha|selecione/i.test(value)) {
+          const m = value.match(/(\d{2}(?:[.,]\d)?)/);
+          if (m) sizes.push({ size_eu: m[1].replace(",", ".") });
         }
       }
     );
 
-    // Se não encontrou tamanhos por select, tenta texto corrido
-    if (sizes.length === 0) {
-      const sizeSection = $(
-        ".product-size, .sizes, .size-guide, .tamanhos"
-      ).text();
-      if (sizeSection) {
-        const extracted = extractSizes(sizeSection);
-        extracted.forEach((s) => sizes.push({ size_eu: s.size_eu }));
-      }
-    }
-
-    // Descrição do produto
-    const description =
-      $(".product-description, .description, [itemprop='description'], .short-description")
-        .first()
-        .text()
-        .trim() || undefined;
-
-    return { sizes, description };
+    return { name, price, originalPrice, link: url, image, sizes };
   } catch {
-    return {};
+    return null;
   }
 }
 
@@ -272,43 +227,21 @@ async function upsertProduct(
   supabase: ReturnType<typeof createServerClient>,
   raw: RawProduct
 ) {
-  const brand = raw.brand
-    ? normalizeBrand(raw.brand)
-    : normalizeBrand(
-        raw.name.includes("Nike")
-          ? "Nike"
-          : raw.name.includes("Jordan")
-            ? "Jordan"
-            : raw.name.includes("Adidas")
-              ? "Adidas"
-              : raw.name.includes("Puma")
-                ? "Puma"
-                : raw.name.includes("Under Armour")
-                  ? "Under Armour"
-                  : raw.name.includes("New Balance")
-                    ? "New Balance"
-                    : "Outra"
-      );
+  const brand = normalizeBrand(
+    raw.name.match(/Nike|Jordan|Adidas|Puma|Under Armour|New Balance|Anta|Reebok|Li-Ning/i)?.[0] || "Outra"
+  );
 
   const { model, colorway } = parseProductName(raw.name, brand);
   const slug = generateSlug(brand, model, colorway);
   const price = cleanPrice(raw.price);
-  const originalPrice = raw.original_price ? cleanPrice(raw.original_price) : null;
+  const originalPrice = raw.originalPrice ? cleanPrice(raw.originalPrice) : null;
 
   if (!price) return;
 
-  // Upsert do produto
   const { data: product, error: productError } = await supabase
     .from("products")
     .upsert(
-      {
-        slug,
-        name: raw.name.trim(),
-        brand,
-        model,
-        colorway,
-        image_url: raw.image || null,
-      },
+      { slug, name: raw.name.trim(), brand, model, colorway, image_url: raw.image || null },
       { onConflict: "slug" }
     )
     .select("id")
@@ -316,7 +249,6 @@ async function upsertProduct(
 
   if (productError) throw new Error(`Produto: ${productError.message}`);
 
-  // Upsert do preço
   const { error: priceError } = await supabase.from("prices").upsert(
     {
       product_id: product.id,
@@ -331,44 +263,26 @@ async function upsertProduct(
 
   if (priceError) throw new Error(`Preço: ${priceError.message}`);
 
-  // Upsert de tamanhos
+  // Tamanhos
   if (raw.sizes && raw.sizes.length > 0) {
-    // Primeiro remove tamanhos antigos desta loja
-    await supabase
-      .from("size_availability")
-      .delete()
-      .eq("product_id", product.id)
-      .eq("store", STORE);
+    await supabase.from("size_availability").delete().eq("product_id", product.id).eq("store", STORE);
 
-    // Insere novos
-    const sizeRows = raw.sizes.map((s) => ({
+    const rows = raw.sizes.map((s) => ({
       product_id: product.id,
       store: STORE,
       size_eu: s.size_eu,
       in_stock: true,
     }));
 
-    const { error: sizeError } = await supabase
-      .from("size_availability")
-      .insert(sizeRows);
-
-    if (sizeError) {
-      console.error(`    ⚠️ Tamanhos: ${sizeError.message}`);
-    }
+    const { error: sizeError } = await supabase.from("size_availability").insert(rows);
+    if (sizeError) console.error(`    ⚠️ Tamanhos: ${sizeError.message}`);
   }
 }
 
-// Execução standalone
 if (require.main === module) {
   scrape()
-    .then((result) => {
-      console.log(`✅ ${result.inserted} produtos`);
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error("❌ Erro fatal:", err);
-      process.exit(1);
-    });
+    .then((r) => { console.log(`✅ ${r.inserted} produtos`); process.exit(0); })
+    .catch((err) => { console.error("❌", err); process.exit(1); });
 }
 
 export { scrape };
