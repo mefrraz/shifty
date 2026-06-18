@@ -26,18 +26,17 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* Hero — barra de pesquisa central */}
-      <section className="bg-gradient-to-b from-orange-50 to-white py-16 sm:py-24">
+      {/* Hero — compacto */}
+      <section className="border-b border-gray-100 dark:border-gray-800 bg-gradient-to-b from-orange-50 to-white dark:from-gray-900 dark:to-gray-950 py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl lg:text-6xl">
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
             Sapatilhas de{" "}
             <span className="text-orange-500">basquetebol</span>
           </h1>
-          <p className="mt-4 text-lg text-gray-500 sm:text-xl max-w-2xl mx-auto">
-            Compara preços nas melhores lojas ibéricas. Encontra o par perfeito
-            para o teu jogo.
+          <p className="mt-3 text-base text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
+            Compara preços nas lojas ibéricas e encontra o par ideal para o teu jogo.
           </p>
-          <div className="mt-8">
+          <div className="mt-6 max-w-xl mx-auto">
             <SearchBar large />
           </div>
         </div>
@@ -47,12 +46,12 @@ export default async function HomePage() {
       {bestDeals.products.length > 0 && (
         <section className="py-12 sm:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                   Melhores descontos hoje
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   As maiores poupanças neste momento
                 </p>
               </div>

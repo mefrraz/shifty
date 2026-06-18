@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estilo D — Playful Tech (DM Sans)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #fff; color: #1e1e2e; line-height: 1.5; }
+  .container { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+
+  .header { position: sticky; top: 0; z-index: 50; border-bottom: 2px solid #f4f4f5; background: white; }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; height: 52px; }
+  .logo { width: 36px; height: 36px; background: linear-gradient(135deg, #f97316, #fb923c); border-radius: 14px; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; box-shadow: 0 4px 12px rgba(249,115,22,0.3); }
+
+  .hero { padding: 64px 0 48px; text-align: center; }
+  .hero h1 { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; }
+  .hero h1 span { background: linear-gradient(135deg, #f97316, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero p { color: #71717a; margin-top: 8px; font-size: 17px; font-weight: 500; }
+  .hero .search { margin-top: 24px; max-width: 500px; margin-left: auto; margin-right: auto; position: relative; }
+  .hero .search input { width: 100%; height: 56px; border: 2px solid #e4e4e7; border-radius: 18px; padding: 0 56px 0 20px; font-size: 16px; outline: none; font-family: inherit; font-weight: 500; transition: border .2s; }
+  .hero .search input:focus { border-color: #f97316; }
+  .hero .search button { position: absolute; right: 8px; top: 8px; width: 40px; height: 40px; background: #f97316; border: none; border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .hero .search button:hover { background: #ea580c; }
+
+  .section { padding: 48px 0; }
+  .section h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .section .sub { font-size: 14px; color: #71717a; font-weight: 500; margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 14px; margin-top: 24px; }
+  .card { border: 2px solid #f4f4f5; border-radius: 18px; overflow: hidden; background: white; transition: all .2s; }
+  .card:hover { border-color: #f97316; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(249,115,22,0.12); }
+  .card-img { aspect-ratio: 1; background: linear-gradient(135deg, #fafafa, #f4f4f5); display: flex; align-items: center; justify-content: center; color: #d4d4d8; }
+  .card-body { padding: 14px; }
+  .card-brand { font-size: 10px; font-weight: 700; color: #f97316; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card-name { font-size: 14px; font-weight: 600; margin-top: 4px; line-height: 1.3; }
+  .card-price { font-size: 18px; font-weight: 800; margin-top: 8px; }
+  .card-old { font-size: 12px; color: #a1a1aa; text-decoration: line-through; font-weight: 500; }
+  .badge { position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f97316, #ea580c); color: white; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 10px; box-shadow: 0 2px 8px rgba(249,115,22,0.4); }
+
+  .product-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 36px; margin-top: 32px; }
+  .product-img { aspect-ratio: 1; background: linear-gradient(135deg, #fafafa, #f4f4f5); border-radius: 20px; border: 2px solid #f4f4f5; }
+  .price-current { font-size: 36px; font-weight: 800; }
+  .price-old { font-size: 18px; color: #a1a1aa; text-decoration: line-through; font-weight: 500; }
+  .savings-badge { background: linear-gradient(135deg, #f97316, #f59e0b); color: white; font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 10px; }
+  .buy-btn { display: block; width: 100%; background: linear-gradient(135deg, #f97316, #ea580c); color: white; border: none; border-radius: 16px; padding: 18px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 4px 16px rgba(249,115,22,0.35); transition: transform .15s; }
+  .buy-btn:hover { transform: scale(1.02); background: linear-gradient(135deg, #ea580c, #c2410c); }
+
+  .note { color: #71717a; font-size: 13px; margin-top: 24px; padding: 16px 20px; background: linear-gradient(135deg, #fafafa, #f4f4f5); border-radius: 14px; font-weight: 500; }
+  .note strong { color: #f97316; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner container">
+    <a href="#" class="logo">S</a>
+    <nav style="display:flex;gap:4px;font-size:14px;font-weight:600">
+      <a href="#" style="color:#71717a;text-decoration:none;padding:6px 14px;border-radius:10px">Catálogo</a>
+    </nav>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="container">
+    <h1>Sapatilhas de <span>basquetebol</span></h1>
+    <p>O melhor preço está a um clique de distância.</p>
+    <div class="search">
+      <input type="text" placeholder="Nike LeBron, Jordan, Adidas..." />
+      <button>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="section container">
+  <h2>Melhores descontos hoje</h2>
+  <p class="sub">As maiores poupanças neste momento</p>
+  <div class="grid">
+    <div class="card" style="position:relative">
+      <div class="card-img"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d4d4d8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
+      <span class="badge">-36%</span>
+      <div class="card-body">
+        <div class="card-brand">Nike</div>
+        <div class="card-name">LeBron 22</div>
+        <div class="card-price">90 € <span class="card-old">140 €</span></div>
+      </div>
+    </div>
+    <div class="card" style="position:relative">
+      <div class="card-img"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d4d4d8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
+      <div class="card-body">
+        <div class="card-brand">Jordan</div>
+        <div class="card-name">Tatum 4 "Blue Orbit"</div>
+        <div class="card-price">125 €</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="padding:48px 20px">
+  <div class="product-grid">
+    <div class="product-img"></div>
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:0.5px">Nike</div>
+      <h1 style="font-size:30px;font-weight:800;margin-top:4px;letter-spacing:-0.5px;line-height:1.1">LeBron 22</h1>
+      <p style="font-size:13px;color:#a1a1aa;font-weight:500;margin-top:4px">White/Black</p>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-top:20px">
+        <span class="price-current">90 €</span>
+        <span class="price-old">140 €</span>
+        <span class="savings-badge">-36%</span>
+      </div>
+      <button class="buy-btn" style="margin-top:20px">Comprar desde 90 € — 3 lojas →</button>
+      <p style="font-size:13px;color:#71717a;margin-top:24px;line-height:1.6;font-weight:500">Descrição IA: tecnologias, tipo de jogador ideal, e o que torna esta sapatilha única.</p>
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <span style="background:#f4f4f5;padding:8px 14px;border-radius:12px;font-size:12px;font-weight:600;color:#52525b">EU 42</span>
+        <span style="background:#f4f4f5;padding:8px 14px;border-radius:12px;font-size:12px;font-weight:600;color:#52525b">EU 43</span>
+        <span style="background:#f4f4f5;padding:8px 14px;border-radius:12px;font-size:12px;font-weight:600;color:#52525b">EU 44</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note container">
+  <strong>Estilo D — Playful Tech:</strong> DM Sans · cantos 14-18px · gradientes laranja em botões e badges · sombras coloridas · border 2px · visual moderno "app" · animações hover com escala
+</div>
+
+</body>
+</html>
