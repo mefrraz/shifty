@@ -1,0 +1,37 @@
+# Shifty — Scraping automático 3x/dia
+# Horários UTC: 6h (7h Lisboa), 12h (13h Lisboa), 18h (19h Lisboa)
+
+name: Scrape de Sapatilhas
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 07:00 Lisboa
+    - cron: '0 12 * * *'  # 13:00 Lisboa
+    - cron: '0 18 * * *'  # 19:00 Lisboa
+  workflow_dispatch:       # Permite execução manual
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run scrapers
+        run: npx tsx scrapers/run-all.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
