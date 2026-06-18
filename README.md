@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# shifty.pt
 
-## Getting Started
+Agregador inteligente de sapatilhas de basquetebol para o mercado ibérico.
 
-First, run the development server:
+Compara preços em tempo real nas melhores lojas de Portugal e Espanha.
+
+---
+
+## Stack
+
+| Camada | Tech |
+|---|---|
+| Frontend | Next.js 15 (App Router) |
+| Estilos | Tailwind CSS |
+| Auth | Supabase Auth |
+| DB | Supabase PostgreSQL |
+| Deploy | Vercel |
+| Scrapers | Node.js + TypeScript + GitHub Actions |
+| IA | NVIDIA NIM |
+
+## Desenvolvimento
 
 ```bash
+# Instalar
+npm install
+
+# Dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build
+npm run build
+
+# Scrapers (teste local)
+npx tsx scrapers/run-all.ts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Estrutura
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+app/              # Next.js App Router
+  page.tsx        # Landing
+  catalogo/       # Listagem de sapatilhas
+  sapatilha/[slug]/  # Página de produto (SSR)
+  marca/[slug]/   # Página de marca
+  conta/          # Auth + perfil
+components/       # Componentes React
+lib/              # Supabase client, data layer
+scrapers/         # Scrapers das lojas
+database/         # Migrações SQL
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Lojas
 
-## Learn More
+| Loja | Estado |
+|---|---|
+| Manel Sanchez | 🟢 Funcional |
+| Basketball Emotion | 🟢 Funcional |
+| Basket4Ballers | 🔴 Bloqueado (precisa Playwright) |
+| Nike PT | ⏳ v2 |
+| BasketCountry | ⏳ v2 |
+| BasketStore | ⏳ v2 |
+| Planeta Basket | ⏳ v2 |
 
-To learn more about Next.js, take a look at the following resources:
+## Licença
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Privado — todos os direitos reservados.
