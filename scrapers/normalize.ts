@@ -21,6 +21,9 @@ const BRAND_PATTERNS: Record<string, string> = {
   lining: "Li-Ning",
   peak: "Peak",
   "way of wade": "Li-Ning",
+  "361": "361°",
+  "361º": "361°",
+  "converse": "Converse",
 };
 
 /**
@@ -42,12 +45,8 @@ export function normalizeBrand(brand: string): string {
   for (const [pattern, normalized] of Object.entries(BRAND_PATTERNS)) {
     if (lower === pattern || lower.includes(pattern)) return normalized;
   }
-  // Capitalizar
-  return brand
-    .trim()
-    .split(" ")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(" ");
+  // Se não encontrou nenhuma marca conhecida, devolve "Outra"
+  return "Outra";
 }
 
 /**
@@ -172,7 +171,7 @@ export function isBasketballShoe(name: string): boolean {
   // Exclui explicitamente não-sapatilhas
   const excludePatterns = [
     "meias", "socks", "pack meias", "pair socks",
-    "camisola", "camisete", "t-shirt", "tee", "jersey", "camisa",
+    "camisola", "camisete", "camiseta", "t-shirt", "tee", "jersey", "camisa", "polo", "body",
     "calcoes", "calções", "shorts", "calças",
     "mochila", "backpack", "sacola", "bolsa", "duffel", "bag",
     "bone", "boné", "cap", "snapback", "gorro", "hat",

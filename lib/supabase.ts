@@ -13,6 +13,7 @@ export type Product = {
   player_type: "guard" | "forward" | "center" | "all" | null;
   player_level: "beginner" | "intermediate" | "pro" | null;
   tags: string[] | null;
+  style_code: string | null;
   created_at: string;
 };
 
