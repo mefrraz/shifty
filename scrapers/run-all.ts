@@ -2,6 +2,13 @@
 // Chamado pelo GitHub Actions 3x/dia
 // Uso: npx tsx scrapers/run-all.ts
 
+import { config } from "dotenv";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+// Carrega .env da raiz do projeto (shifty/)
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
+
 import { scrape as scrapeBasket4Ballers } from "./basket4ballers";
 import { scrape as scrapeManelSanchez } from "./manelsanchez";
 import { scrape as scrapeBasketballEmotion } from "./basketballemotion";

@@ -4,7 +4,7 @@
 
 import { createServerClient } from "../lib/supabaseServer";
 import * as cheerio from "cheerio";
-import type { Element } from "domhandler";
+import type { AnyNode } from "domhandler";
 import {
   normalizeBrand,
   parseProductName,
@@ -168,7 +168,7 @@ async function scrapePage(url: string): Promise<RawProduct[]> {
 
 function extractProduct(
   $: cheerio.CheerioAPI,
-  el: Element
+  el: AnyNode
 ): RawProduct | null {
   const $el = $(el);
 
